@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "/Users/jason/workspace/PoorMansOsc/kxmx_bluemchen/libDaisy",
+    "cmake.sourceDirectory": "/Users/jason/workspace/Lessillator/kxmx_bluemchen/libDaisy",
     "files.associations": {
         "*.vue": "vue",
         "any": "cpp",

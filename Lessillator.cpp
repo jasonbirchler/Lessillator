@@ -5,7 +5,9 @@ using namespace kxmx;
 using namespace daisy;
 using namespace daisysp;
 
-Bluemchen hw;
+Bluemchen  hw;
+Oscillator osc;
+Svf        filt;
 
 int enc_val = 0;
 int midi_note = 0;
@@ -71,14 +73,34 @@ void HandleMidiMessage(MidiEvent m)
     {
     case NoteOn:
     {
-        midi_note = m.AsNoteOn().note;
+        NoteOnEvent p = m.AsNoteOn();
+        p = m.AsNoteOn();
+        osc.SetFreq(mtof(p.note));
+        osc.SetAmp((p.velocity / 127.0f));
     }
     break;
     case NoteOff:
     {
-        midi_note = 0;
+        osc.SetAmp(0.f);
     }
     break;
+    case ControlChange:
+    {
+        ControlChangeEvent p = m.AsControlChange();
+        switch(p.control_number)
+        {
+            case 1:
+                // CC 1 for cutoff.
+                filt.SetFreq(mtof((float)p.value));
+                break;
+            case 2:
+                // CC 2 for res.
+                filt.SetRes(((float)p.value / 127.0f));
+                break;
+            default: break;
+        }
+        break;
+    }
     default:
         break;
     }
@@ -97,19 +119,49 @@ void UpdateControls()
     enc_val += hw.encoder.Increment();
 }
 
+void SplashScreen()
+{
+    std::string str  = "PoManOsc";
+    FontDef font = Font_7x10;
+    char*       cstr = &str[0];
+    uint16_t maxDelay = 100;
+
+    hw.display.SetCursor(0,0);
+
+    for (size_t i = 0; i < 50; i++)
+    {
+        uint16_t x = i < hw.display.Width() ? i : 0;
+        uint16_t y = i < hw.display.Height() ? i : 0;
+        hw.display.SetCursor(x, y);
+        hw.display.WriteString(cstr, font, true);
+        hw.display.Update();
+        hw.DelayMs(maxDelay - 10);
+    }
+}
+
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
 {
+    UpdateControls();
+
+    float sig;
+
     for(size_t i = 0; i < size; i++)
     {
-        out[0][i] = in[0][i];
-        out[1][i] = in[1][i];
+        sig = osc.Process();
+        filt.Process(sig);
+
+        out[0][i] = filt.Low();
+        out[1][i] = filt.Low();
     }
 }
 
 int main(void)
 {
     hw.Init();
-    hw.StartAdc();
+    float samplerate = hw.AudioSampleRate();
+
+    osc.Init(samplerate);
+    osc.SetWaveform(0);
 
     knob1.Init(hw.controls[hw.CTRL_1], 0.0f, 5000.0f, Parameter::LINEAR);
     knob2.Init(hw.controls[hw.CTRL_2], 0.0f, 5000.0f, Parameter::LINEAR);
@@ -117,6 +169,10 @@ int main(void)
     cv1.Init(hw.controls[hw.CTRL_3], -5000.0f, 5000.0f, Parameter::LINEAR);
     cv2.Init(hw.controls[hw.CTRL_4], -5000.0f, 5000.0f, Parameter::LINEAR);
 
+    // splash screen on boot
+    SplashScreen();
+
+    hw.StartAdc();
     hw.StartAudio(AudioCallback);
 
     while (1)

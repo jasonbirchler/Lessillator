@@ -1,2 +1,2 @@
-# PoorMansOsc
-A simple oscillator written for the Electrosmith Daisy Seed using Bluemchen harware
+# Lessillator
+A simple oscillator and filter written for the [Electrosmith Daisy Seed](https://github.com/electro-smith) using [Bluemchen hardware](https://github.com/recursinging/kxmx_bluemchen/tree/main) based on Midi and VCO examples from [DaisyExamples](https://github.com/electro-smith/DaisyExamples)

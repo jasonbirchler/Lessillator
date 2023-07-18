@@ -1,11 +1,11 @@
 # Project Name
-TARGET = PoorMansOsc
+TARGET = Lessillator
 
 DEBUG = 1
 OPT = -O0
 
 # Sources
-CPP_SOURCES = PoorMansOsc.cpp kxmx_bluemchen/src/kxmx_bluemchen.cpp
+CPP_SOURCES = Lessillator.cpp kxmx_bluemchen/src/kxmx_bluemchen.cpp
 
 USE_FATFS = 1
 
