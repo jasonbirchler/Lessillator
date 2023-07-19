@@ -6,7 +6,7 @@ using namespace daisy;
 using namespace daisysp;
 
 Bluemchen  hw;
-Oscillator osc;
+Oscillator osc[4];
 Svf        filt;
 
 int enc_val = 0;
@@ -75,13 +75,22 @@ void HandleMidiMessage(MidiEvent m)
     {
         NoteOnEvent p = m.AsNoteOn();
         p = m.AsNoteOn();
-        osc.SetFreq(mtof(p.note));
-        osc.SetAmp((p.velocity / 127.0f));
+
+        for (size_t i = 0; i < 4; i++)
+        {
+            osc[i].SetFreq(mtof(p.note));
+            osc[i].SetAmp((p.velocity / 127.0f));
+        }
+        
     }
     break;
     case NoteOff:
     {
-        osc.SetAmp(0.f);
+        for (size_t i = 0; i < 4; i++)
+        {
+            osc[i].SetAmp(0.f);
+        }
+        
     }
     break;
     case ControlChange:
@@ -147,7 +156,11 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
     for(size_t i = 0; i < size; i++)
     {
-        sig = osc.Process();
+        for (size_t i = 0; i < 4; i++)
+        {
+            sig += osc[i].Process();
+        }
+        
         filt.Process(sig);
 
         out[0][i] = filt.Low();
@@ -160,8 +173,12 @@ int main(void)
     hw.Init();
     float samplerate = hw.AudioSampleRate();
 
-    osc.Init(samplerate);
-    osc.SetWaveform(0);
+    for (size_t i = 0; i < 4; i++)
+    {
+        osc[i].Init(samplerate);
+        osc[i].SetWaveform(0);
+    }
+    
 
     knob1.Init(hw.controls[hw.CTRL_1], 0.0f, 5000.0f, Parameter::LINEAR);
     knob2.Init(hw.controls[hw.CTRL_2], 0.0f, 5000.0f, Parameter::LINEAR);
