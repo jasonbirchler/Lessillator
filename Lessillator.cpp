@@ -11,11 +11,17 @@ Svf        filt;
 
 int enc_val = 0;
 int midi_note = 0;
+bool midi_note_rcd = false;
+bool cc_msg_rcd = false;
 
 Parameter knob1;
 Parameter knob2;
 Parameter cv1;
 Parameter cv2;
+
+uint selectedOsc = 0;
+int cursorPosition = 0;
+bool editState = false;
 
 void UpdateOled()
 {
@@ -31,37 +37,58 @@ void UpdateOled()
     // Display Encoder test increment value and pressed state
     std::string str = "Enc:";
     char *cstr = &str[0];
-    hw.display.WriteString(cstr, font, true);
+    // hw.display.WriteString(cstr, font, true);
 
-    str = std::to_string(enc_val);
-    hw.display.SetCursor(5 * charWidth, yOrigin);
-    hw.display.WriteString(cstr, font, !hw.encoder.Pressed());
+    // str = std::to_string(enc_val);
+    // hw.display.SetCursor(5 * charWidth, yOrigin);
+    // hw.display.WriteString(cstr, font, !hw.encoder.Pressed());
 
     // Display the knob values in millivolts
-    str = "K1:";
-    hw.display.SetCursor(xOrigin, 1 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    // str = "K1:";
+    // hw.display.SetCursor(xOrigin, 1 * lineHeight);
+    // hw.display.WriteString(cstr, font, true);
 
-    str = std::to_string(static_cast<int>(knob1.Value()));
-    hw.display.SetCursor(4 * charWidth, 1 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    // str = std::to_string(static_cast<int>(knob1.Value()));
+    // hw.display.SetCursor(4 * charWidth, 1 * lineHeight);
+    // hw.display.WriteString(cstr, font, true);
 
-    str = "K2:";
-    hw.display.SetCursor(xOrigin, 2 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    // str = "K2:";
+    // hw.display.SetCursor(xOrigin, 2 * lineHeight);
+    // hw.display.WriteString(cstr, font, true);
 
-    str = std::to_string(static_cast<int>(knob2.Value()));
-    hw.display.SetCursor(4 * charWidth, 2 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    // str = std::to_string(static_cast<int>(knob2.Value()));
+    // hw.display.SetCursor(4 * charWidth, 2 * lineHeight);
+    // hw.display.WriteString(cstr, font, true);
 
     // Display MIDI input note number
-    str = "M:";
-    hw.display.SetCursor(xOrigin, 3 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    str = "M";
+    hw.display.SetCursor(58, 2 * lineHeight);
+    hw.display.WriteString(cstr, font, !midi_note_rcd);
 
-    str = std::to_string(static_cast<int>(midi_note));
-    hw.display.SetCursor(2 * charWidth, 3 * lineHeight);
-    hw.display.WriteString(cstr, font, true);
+    // Display MIDI CC number
+    str = "CC";
+    hw.display.SetCursor(58, 3 * lineHeight);
+    hw.display.WriteString(cstr, font, !cc_msg_rcd);
+
+    switch (cursorPosition)
+    {
+    case 0:
+        hw.display.DrawRect(0,0,28,16,true, editState);
+        break;
+    case 1:
+        hw.display.DrawRect(28,0,56,16,true, editState);
+        break;
+    case 2:
+        hw.display.DrawRect(0,16,28,31,true, editState);
+        break;
+    case 3:
+        hw.display.DrawRect(28,16,56,31,true, editState);
+        break;
+    default:
+        break;
+    }
+    hw.display.DrawLine(0,16,56,16,true);
+    hw.display.DrawLine(28,0,28,32,true);
 
     hw.display.Update();
 }
@@ -76,16 +103,19 @@ void HandleMidiMessage(MidiEvent m)
         NoteOnEvent p = m.AsNoteOn();
         p = m.AsNoteOn();
 
+        midi_note_rcd = true;
+        midi_note = p.note;
+
         for (size_t i = 0; i < 4; i++)
         {
             osc[i].SetFreq(mtof(p.note));
             osc[i].SetAmp((p.velocity / 127.0f));
         }
-        
     }
     break;
     case NoteOff:
     {
+        midi_note_rcd = false;
         for (size_t i = 0; i < 4; i++)
         {
             osc[i].SetAmp(0.f);
@@ -96,6 +126,8 @@ void HandleMidiMessage(MidiEvent m)
     case ControlChange:
     {
         ControlChangeEvent p = m.AsControlChange();
+
+        cc_msg_rcd = p.value > 0 ? true : false;
         switch(p.control_number)
         {
             case 1:
@@ -111,6 +143,7 @@ void HandleMidiMessage(MidiEvent m)
         break;
     }
     default:
+        cc_msg_rcd = false;
         break;
     }
 }
@@ -125,7 +158,17 @@ void UpdateControls()
     cv1.Process();
     cv2.Process();
 
-    enc_val += hw.encoder.Increment();
+    cursorPosition += hw.encoder.Increment();
+    if (cursorPosition == 4)
+    {
+        cursorPosition = 3;
+    }
+    if (cursorPosition == -1)
+    {
+        cursorPosition = 0;
+    }
+
+    editState = hw.encoder.RisingEdge() ? !editState : editState;
 }
 
 void SplashScreen()
@@ -187,7 +230,7 @@ int main(void)
     cv2.Init(hw.controls[hw.CTRL_4], -5000.0f, 5000.0f, Parameter::LINEAR);
 
     // splash screen on boot
-    SplashScreen();
+    // SplashScreen();
 
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
